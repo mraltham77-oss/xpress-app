@@ -3,6 +3,15 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/app_user.dart';
 import 'supabase_service.dart';
 
+/// يرمى عند إنشاء حساب يحتاج تأكيد البريد الإلكتروني قبل تسجيل الدخول.
+class EmailConfirmationRequired implements Exception {
+  const EmailConfirmationRequired();
+
+  @override
+  String toString() =>
+      'تم إنشاء حسابك. افتح بريدك الإلكتروني وأكّد الرسالة ثم سجّل الدخول.';
+}
+
 /// مصادقة حقيقية عبر Supabase Auth (بريد إلكتروني + كلمة مرور).
 class AuthRepository {
   const AuthRepository();
@@ -42,14 +51,16 @@ class AuthRepository {
     );
     final user = res.user;
     if (user == null) throw const AuthException('تعذّر إنشاء الحساب');
-    if (res.session != null) {
-      await _upsertProfile(
-        id: user.id,
-        name: name,
-        phone: phone ?? '',
-        city: 'القاهرة',
-      );
+    if (res.session == null) {
+      // الحساب اتّعمل، لكن Supabase بيطلب تأكيد البريد قبل الدخول.
+      throw const EmailConfirmationRequired();
     }
+    await _upsertProfile(
+      id: user.id,
+      name: name,
+      phone: phone ?? '',
+      city: 'القاهرة',
+    );
     return _map(user, {'name': name, 'phone': phone, 'city': 'القاهرة'});
   }
 

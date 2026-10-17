@@ -5,6 +5,9 @@ on:
   push:
     branches: [main, master]
 
+permissions:
+  contents: write
+
 jobs:
   build-apk:
     runs-on: ubuntu-latest
@@ -34,9 +37,18 @@ jobs:
           --dart-define=SUPABASE_URL=https://ecozqbecxbpicxwjmtcv.supabase.co
           --dart-define=SUPABASE_ANON_KEY=sb_publishable_f2ViyzVqy0bbM8JyonEUZQ_6Kpeydhz
 
-      - name: Upload APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: xpress-apk
           path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
+
+      - name: Publish downloadable APK
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-latest
+          name: XPRESS APK (latest)
+          body: أحدث نسخة تلقائية من تطبيق XPRESS.
+          files: build/app/outputs/flutter-apk/app-release.apk
+          make_latest: true

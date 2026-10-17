@@ -300,6 +300,18 @@ class AccountScreen extends ConsumerWidget {
                     label: AppStrings.myWallet,
                     onTap: () => context.push('/wallet'),
                   ),
+                  if (user?.isSeller ?? false)
+                    _MenuItem(
+                      icon: Icons.dashboard_customize_outlined,
+                      label: 'لوحة متجري',
+                      onTap: () => context.push('/seller'),
+                      trailing: const PillBadge(
+                        text: 'بائع',
+                        fontSize: 10,
+                        color: AppColors.accent,
+                        background: AppColors.primarySoft,
+                      ),
+                    ),
                   _MenuItem(
                     icon: Icons.storefront_outlined,
                     label: AppStrings.becomeSeller,

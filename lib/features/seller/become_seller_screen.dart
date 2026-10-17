@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_tokens.dart';
+import '../../data/providers/providers.dart';
 
-class BecomeSellerScreen extends StatefulWidget {
+class BecomeSellerScreen extends ConsumerStatefulWidget {
   const BecomeSellerScreen({super.key});
 
   @override
-  State<BecomeSellerScreen> createState() => _BecomeSellerScreenState();
+  ConsumerState<BecomeSellerScreen> createState() => _BecomeSellerScreenState();
 }
 
-class _BecomeSellerScreenState extends State<BecomeSellerScreen> {
+class _BecomeSellerScreenState extends ConsumerState<BecomeSellerScreen> {
   final _store = TextEditingController();
   final _phone = TextEditingController();
   final _cr = TextEditingController();
@@ -36,11 +38,43 @@ class _BecomeSellerScreenState extends State<BecomeSellerScreen> {
   }
 
   Future<void> _submit() async {
-    if (_store.text.isEmpty || _category == null) return;
+    if (_store.text.trim().isEmpty || _category == null) return;
+    final auth = ref.read(authProvider.notifier);
+    final user = ref.read(authProvider);
     setState(() => _submitting = true);
+
+    if (auth.serverMode) {
+      if (user == null) {
+        setState(() => _submitting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('سجّل الدخول أولًا لفتح متجر')),
+        );
+        return;
+      }
+      try {
+        await ref
+            .read(myStoreProvider.notifier)
+            .createStore(name: _store.text.trim(), category: _category!);
+        if (!mounted) return;
+        setState(() => _submitting = false);
+        _showSuccess(real: true);
+      } catch (e) {
+        if (!mounted) return;
+        setState(() => _submitting = false);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('تعذّر فتح المتجر: $e')));
+      }
+      return;
+    }
+
     await Future<void>.delayed(const Duration(milliseconds: 1000));
     if (!mounted) return;
     setState(() => _submitting = false);
+    _showSuccess(real: false);
+  }
+
+  void _showSuccess({required bool real}) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -62,15 +96,17 @@ class _BecomeSellerScreenState extends State<BecomeSellerScreen> {
               ),
             ),
             const SizedBox(height: Gap.lg),
-            const Text(
-              'تم استلام طلبك!',
-              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
+            Text(
+              real ? 'تم فتح متجرك! 🎉' : 'تم استلام طلبك!',
+              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
             ),
             const SizedBox(height: Gap.sm),
-            const Text(
-              'سيتواصل فريقنا معك خلال 24 ساعة لاستكمال بيانات المتجر والتحقق (KYC).',
+            Text(
+              real
+                  ? 'تقدر الآن تضيف منتجاتك وتستقبل الطلبات مباشرة.'
+                  : 'سيتواصل فريقنا معك خلال 24 ساعة لاستكمال بيانات المتجر والتحقق (KYC).',
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 color: AppColors.textSecondary,
                 height: 1.8,
                 fontSize: 13,
@@ -82,9 +118,9 @@ class _BecomeSellerScreenState extends State<BecomeSellerScreen> {
               child: ElevatedButton(
                 onPressed: () {
                   Navigator.pop(ctx);
-                  context.go('/home');
+                  context.go(real ? '/seller' : '/home');
                 },
-                child: const Text('حسنًا'),
+                child: Text(real ? 'اذهب للوحة متجري' : 'حسنًا'),
               ),
             ),
           ],
@@ -128,7 +164,7 @@ class _BecomeSellerScreenState extends State<BecomeSellerScreen> {
                 ),
                 SizedBox(height: 6),
                 Text(
-                  'صِل إلى ملايين العملاء، وعمولة تنافسية تبدأ من 8%، وتحويلات أسبوعية.',
+                  'صِل إلى ملايين العملاء، وأضف منتجاتك واستقبل الطلبات مباشرة.',
                   style: TextStyle(
                     color: Colors.white70,
                     fontSize: 13,
@@ -143,13 +179,14 @@ class _BecomeSellerScreenState extends State<BecomeSellerScreen> {
           TextField(
             controller: _store,
             decoration: const InputDecoration(hintText: 'مثال: متجر النخبة'),
+            onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: Gap.lg),
           _label('رقم الجوال'),
           TextField(
             controller: _phone,
             keyboardType: TextInputType.phone,
-            decoration: const InputDecoration(hintText: '+966 5X XXX XXXX'),
+            decoration: const InputDecoration(hintText: '+20 1X XXX XXXX'),
           ),
           const SizedBox(height: Gap.lg),
           _label('السجل التجاري (اختياري)'),
@@ -205,7 +242,7 @@ class _BecomeSellerScreenState extends State<BecomeSellerScreen> {
                       color: Colors.white,
                     ),
                   )
-                : const Text('إرسال الطلب'),
+                : const Text('إنشاء المتجر'),
           ),
         ],
       ),

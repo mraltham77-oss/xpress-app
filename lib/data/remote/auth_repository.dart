@@ -24,6 +24,14 @@ class AuthRepository {
     return _map(u, null);
   }
 
+  /// يقرأ ملف المستخدم الحالي من قاعدة البيانات (يشمل الدور/الاسم المحدّث).
+  Future<AppUser?> currentUserFresh() async {
+    final u = _auth.currentUser;
+    if (u == null) return null;
+    final profile = await _fetchProfile(u.id);
+    return _map(u, profile);
+  }
+
   Future<AppUser> signIn({
     required String email,
     required String password,
@@ -43,11 +51,12 @@ class AuthRepository {
     required String password,
     required String name,
     String? phone,
+    String role = 'customer',
   }) async {
     final res = await _auth.signUp(
       email: email,
       password: password,
-      data: {'name': name, 'phone': phone},
+      data: {'name': name, 'phone': phone, 'role': role},
     );
     final user = res.user;
     if (user == null) throw const AuthException('تعذّر إنشاء الحساب');
@@ -60,8 +69,14 @@ class AuthRepository {
       name: name,
       phone: phone ?? '',
       city: 'القاهرة',
+      role: role,
     );
-    return _map(user, {'name': name, 'phone': phone, 'city': 'القاهرة'});
+    return _map(user, {
+      'name': name,
+      'phone': phone,
+      'city': 'القاهرة',
+      'role': role,
+    });
   }
 
   Future<void> signOut() => _auth.signOut();
@@ -84,6 +99,7 @@ class AuthRepository {
     required String name,
     required String phone,
     required String city,
+    String role = 'customer',
   }) async {
     try {
       await SupabaseService.client.from('profiles').upsert({
@@ -91,7 +107,7 @@ class AuthRepository {
         'name': name,
         'phone': phone,
         'city': city,
-        'role': 'customer',
+        'role': role,
       });
     } catch (_) {
       // الجدول قد يُدار عبر Trigger — نتجاهل الفشل غير الحرج.

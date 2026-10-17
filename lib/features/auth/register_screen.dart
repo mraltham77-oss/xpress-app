@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/constants/strings_ar.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_tokens.dart';
+import '../../data/models/app_user.dart';
 import '../../data/providers/providers.dart';
 import '../../shared/widgets/premium.dart';
 
@@ -26,6 +27,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool _agree = false;
   bool _obscure = true;
   bool _loading = false;
+  UserRole _role = UserRole.customer;
 
   @override
   void dispose() {
@@ -60,6 +62,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           password: _password.text,
           name: _name.text.trim(),
           phone: phone,
+          role: _role,
         );
         if (!mounted) return;
         setState(() => _loading = false);
@@ -137,6 +140,26 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                 ),
                 const SizedBox(height: Gap.xxl),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _roleChip(
+                        label: 'عميل',
+                        icon: Icons.shopping_bag_rounded,
+                        value: UserRole.customer,
+                      ),
+                    ),
+                    const SizedBox(width: Gap.md),
+                    Expanded(
+                      child: _roleChip(
+                        label: 'تاجر',
+                        icon: Icons.storefront_rounded,
+                        value: UserRole.seller,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: Gap.lg),
                 _field(
                   controller: _name,
                   label: AppStrings.fullName,
@@ -259,6 +282,46 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _roleChip({
+    required String label,
+    required IconData icon,
+    required UserRole value,
+  }) {
+    final sel = _role == value;
+    return GestureDetector(
+      onTap: () => setState(() => _role = value),
+      child: AnimatedContainer(
+        duration: Motion.fast,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: sel ? AppColors.primary : AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: sel ? AppColors.primary : AppColors.divider,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 18,
+              color: sel ? Colors.white : AppColors.textSecondary,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                color: sel ? Colors.white : AppColors.textPrimary,
+              ),
+            ),
+          ],
         ),
       ),
     );

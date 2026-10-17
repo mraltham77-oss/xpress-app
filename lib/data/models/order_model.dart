@@ -8,6 +8,7 @@ enum OrderStatus {
 }
 
 class OrderShipment {
+  final String vendorId;
   final String vendorName;
   final String vendorAvatar;
   final OrderStatus status;
@@ -25,6 +26,7 @@ class OrderShipment {
     required this.itemTitles,
     required this.itemCount,
     required this.amount,
+    this.vendorId = '',
     this.productIds = const [],
     this.trackingNo = '',
     this.carrier = 'XPRESS POST',
@@ -40,6 +42,7 @@ class OrderShipment {
 
   OrderShipment copyWith({OrderStatus? status, String? trackingNo}) {
     return OrderShipment(
+      vendorId: vendorId,
       vendorName: vendorName,
       vendorAvatar: vendorAvatar,
       status: status ?? this.status,
@@ -53,6 +56,7 @@ class OrderShipment {
   }
 
   Map<String, dynamic> toJson() => {
+    'vendorId': vendorId,
     'vendorName': vendorName,
     'vendorAvatar': vendorAvatar,
     'status': status.name,
@@ -65,6 +69,7 @@ class OrderShipment {
   };
 
   factory OrderShipment.fromJson(Map<String, dynamic> json) => OrderShipment(
+    vendorId: json['vendorId'] as String? ?? '',
     vendorName: json['vendorName'] as String? ?? '',
     vendorAvatar: json['vendorAvatar'] as String? ?? '',
     status: _statusFromName(json['status'] as String?),
@@ -172,3 +177,23 @@ class Order {
     reviewed: json['reviewed'] as bool? ?? false,
   );
 }
+
+/// يبني [Order] من صف جدول `orders` في Supabase (مفاتيح snake_case).
+Order orderFromRemoteRow(Map<String, dynamic> r) => Order(
+  id: r['id'] as String,
+  date: DateTime.tryParse(r['date']?.toString() ?? '') ?? DateTime.now(),
+  shipments:
+      (r['shipments'] as List?)
+          ?.whereType<Map>()
+          .map((e) => OrderShipment.fromJson(e.cast<String, dynamic>()))
+          .toList() ??
+      const [],
+  total: (r['total'] as num?)?.toDouble() ?? 0,
+  subtotal: (r['subtotal'] as num?)?.toDouble() ?? 0,
+  shipping: (r['shipping'] as num?)?.toDouble() ?? 0,
+  discount: (r['discount'] as num?)?.toDouble() ?? 0,
+  addressSummary: r['address_summary'] as String? ?? '',
+  paymentLabel: r['payment_label'] as String? ?? '',
+  escrowHeld: r['escrow_held'] as bool? ?? false,
+  reviewed: r['reviewed'] as bool? ?? false,
+);

@@ -15,6 +15,7 @@ import '../models/vendor.dart';
 import '../models/wallet_tx.dart';
 import '../remote/auth_repository.dart';
 import '../remote/catalog_repository.dart';
+import '../remote/seller_repository.dart';
 import '../remote/supabase_service.dart';
 import '../remote/user_data_repository.dart';
 import '../storage/local_store.dart';
@@ -22,6 +23,7 @@ import '../storage/local_store.dart';
 const _catalogRepo = CatalogRepository();
 const _authRepo = AuthRepository();
 const _userRepo = UserDataRepository();
+const _sellerRepo = SellerRepository();
 
 /// معرّف المستخدم على السيرفر (null في الوضع المحلي أو قبل تسجيل الدخول).
 String? _remoteUserId(Ref ref) => SupabaseService.isReady
@@ -197,13 +199,22 @@ class AuthNotifier extends Notifier<AppUser?> {
     required String password,
     required String name,
     String? phone,
+    UserRole role = UserRole.customer,
   }) async {
     state = await _authRepo.signUp(
       email: email,
       password: password,
       name: name,
       phone: phone,
+      role: role.name,
     );
+    _reloadUserData();
+  }
+
+  /// يعيد قراءة الملف الشخصي من السيرفر (مثلًا بعد فتح متجر).
+  Future<void> refreshProfile() async {
+    if (!SupabaseService.isReady) return;
+    state = await _authRepo.currentUserFresh();
     _reloadUserData();
   }
 
@@ -604,9 +615,10 @@ class OrdersNotifier extends Notifier<List<Order>> {
   @override
   List<Order> build() {
     _hydrate();
-    if (!LocalStore.isReady) return MockData.orders();
+    final demo = SupabaseService.isReady ? <Order>[] : MockData.orders();
+    if (!LocalStore.isReady) return demo;
     final rows = LocalStore.instance.getJsonList(LocalStore.kOrders);
-    if (rows == null) return MockData.orders();
+    if (rows == null) return demo;
     return rows.map(Order.fromJson).toList();
   }
 
@@ -652,6 +664,7 @@ class OrdersNotifier extends Notifier<List<Order>> {
     final shipments = byVendor.values.map((lines) {
       final amount = lines.fold(0.0, (s, i) => s + i.lineTotal);
       return OrderShipment(
+        vendorId: lines.first.vendor.id,
         vendorName: lines.first.vendor.name,
         vendorAvatar: lines.first.vendor.avatarUrl,
         status: OrderStatus.processing,
@@ -679,7 +692,12 @@ class OrdersNotifier extends Notifier<List<Order>> {
     state = [order, ...state];
     _persist();
     final uid = _remoteUserId(ref);
-    if (uid != null) _userRepo.insertOrder(uid, order).catchError((_) {});
+    if (uid != null) {
+      final customerName = ref.read(authProvider)?.name ?? '';
+      _userRepo
+          .insertOrder(uid, order, customerName: customerName)
+          .catchError((_) {});
+    }
     return order;
   }
 
@@ -815,3 +833,52 @@ class WalletNotifier extends Notifier<WalletState> {
 final walletProvider = NotifierProvider<WalletNotifier, WalletState>(
   WalletNotifier.new,
 );
+
+// ─────────────────────────── Seller (لوحة البائع) ───────────────────────────
+final sellerRepositoryProvider = Provider<SellerRepository>(
+  (ref) => _sellerRepo,
+);
+
+/// المتجر الخاص بالمستخدم الحالي (null إن لم يكن بائعًا بعد).
+class MyStoreNotifier extends AsyncNotifier<Vendor?> {
+  @override
+  Future<Vendor?> build() async {
+    final uid = _remoteUserId(ref);
+    if (uid == null) return null;
+    return _sellerRepo.myStore(uid);
+  }
+
+  Future<Vendor?> createStore({
+    required String name,
+    String category = '',
+  }) async {
+    final uid = _remoteUserId(ref);
+    if (uid == null) throw Exception('سجّل الدخول أولًا');
+    state = const AsyncValue.loading();
+    final result = await AsyncValue.guard(
+      () =>
+          _sellerRepo.createStore(userId: uid, name: name, category: category),
+    );
+    state = result;
+    await ref.read(authProvider.notifier).refreshProfile();
+    return result.asData?.value;
+  }
+}
+
+final myStoreProvider = AsyncNotifierProvider<MyStoreNotifier, Vendor?>(
+  MyStoreNotifier.new,
+);
+
+/// منتجات متجر المستخدم الحالي.
+final myProductsProvider = FutureProvider<List<Product>>((ref) async {
+  final store = await ref.watch(myStoreProvider.future);
+  if (store == null) return const [];
+  return _sellerRepo.myProducts(store.id);
+});
+
+/// الطلبات الواردة لمتجر المستخدم الحالي.
+final incomingOrdersProvider = FutureProvider<List<Order>>((ref) async {
+  final store = await ref.watch(myStoreProvider.future);
+  if (store == null) return const [];
+  return _sellerRepo.incomingOrders(store.id);
+});

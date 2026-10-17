@@ -19,6 +19,7 @@ import '../../features/product/product_detail_screen.dart';
 import '../../features/reviews/write_review_screen.dart';
 import '../../features/search/search_screen.dart';
 import '../../features/seller/become_seller_screen.dart';
+import '../../features/seller/seller_dashboard_screen.dart';
 import '../../features/settings/about_screen.dart';
 import '../../features/settings/help_center_screen.dart';
 import '../../features/settings/settings_screen.dart';
@@ -131,6 +132,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/become-seller',
       builder: (context, state) => const BecomeSellerScreen(),
+    ),
+    GoRoute(
+      path: '/seller',
+      builder: (context, state) => const SellerDashboardScreen(),
     ),
   ],
 );

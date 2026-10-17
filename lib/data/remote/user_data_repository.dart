@@ -82,11 +82,22 @@ class UserDataRepository {
         .eq('user_id', userId)
         .order('date', ascending: false);
     return rows
-        .map<Order>((r) => _order((r as Map).cast<String, dynamic>()))
+        .map<Order>(
+          (r) => orderFromRemoteRow((r as Map).cast<String, dynamic>()),
+        )
         .toList();
   }
 
-  Future<void> insertOrder(String userId, Order o) async {
+  Future<void> insertOrder(
+    String userId,
+    Order o, {
+    String customerName = '',
+  }) async {
+    final storeIds = o.shipments
+        .map((s) => s.vendorId)
+        .where((v) => v.isNotEmpty)
+        .toSet()
+        .toList();
     await SupabaseService.client.from('orders').insert({
       'id': o.id,
       'user_id': userId,
@@ -100,6 +111,8 @@ class UserDataRepository {
       'payment_label': o.paymentLabel,
       'escrow_held': o.escrowHeld,
       'reviewed': o.reviewed,
+      'store_ids': storeIds,
+      'customer_name': customerName,
     });
   }
 
@@ -124,24 +137,5 @@ class UserDataRepository {
     street: r['street'] as String? ?? '',
     details: r['details'] as String? ?? '',
     isDefault: r['is_default'] as bool? ?? false,
-  );
-
-  Order _order(Map<String, dynamic> r) => Order(
-    id: r['id'] as String,
-    date: DateTime.tryParse(r['date']?.toString() ?? '') ?? DateTime.now(),
-    shipments:
-        (r['shipments'] as List?)
-            ?.whereType<Map>()
-            .map((e) => OrderShipment.fromJson(e.cast<String, dynamic>()))
-            .toList() ??
-        const [],
-    total: (r['total'] as num?)?.toDouble() ?? 0,
-    subtotal: (r['subtotal'] as num?)?.toDouble() ?? 0,
-    shipping: (r['shipping'] as num?)?.toDouble() ?? 0,
-    discount: (r['discount'] as num?)?.toDouble() ?? 0,
-    addressSummary: r['address_summary'] as String? ?? '',
-    paymentLabel: r['payment_label'] as String? ?? '',
-    escrowHeld: r['escrow_held'] as bool? ?? false,
-    reviewed: r['reviewed'] as bool? ?? false,
   );
 }

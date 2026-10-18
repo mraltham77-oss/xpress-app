@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
@@ -17,22 +19,21 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen> {
   bool _navigating = false;
+  Timer? _fired;
+  Timer? _safety;
 
   @override
   void initState() {
     super.initState();
-    _autoStart();
+    // الانتقال مضمون: مؤقّت لا يعتمد على أي await يقدر يتعلق.
+    _fired = Timer(const Duration(milliseconds: 1200), _onTimer);
+    // شبكة أمان: لو أي شيء اتعلّق، ننتقل للرئيسية مهما كان.
+    _safety = Timer(const Duration(milliseconds: 3200), () => _go('/home'));
   }
 
-  Future<void> _autoStart() async {
-    final seen = await _seenOnboarding();
-    await Future<void>.delayed(const Duration(milliseconds: 1200));
-    if (!mounted || _navigating) return;
-    _go(seen ? '/home' : '/onboarding');
-  }
+  void _onTimer() => _resolveThen();
 
-  Future<void> _start() async {
-    _navigating = true;
+  Future<void> _resolveThen() async {
     final seen = await _seenOnboarding();
     if (!mounted) return;
     _go(seen ? '/home' : '/onboarding');
@@ -49,8 +50,16 @@ class _SplashScreenState extends State<SplashScreen> {
     }
   }
 
+  @override
+  void dispose() {
+    _fired?.cancel();
+    _safety?.cancel();
+    super.dispose();
+  }
+
   void _go(String location) {
-    if (!mounted) return;
+    if (_navigating || !mounted) return;
+    _navigating = true;
     try {
       context.go(location);
     } catch (e) {
@@ -119,6 +128,15 @@ class _SplashScreenState extends State<SplashScreen> {
                             fontWeight: FontWeight.w700,
                           ),
                         ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'V1.0.1',
+                          style: TextStyle(
+                            color: AppColors.textHint,
+                            fontSize: 11,
+                            letterSpacing: 2,
+                          ),
+                        ),
                       ],
                     )
                     .animate()
@@ -159,13 +177,16 @@ class _SplashScreenState extends State<SplashScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const SizedBox(height: Gap.lg),
-                    SizedBox(width: 240, child: _StartButton(onPressed: _start))
+                    SizedBox(
+                          width: 240,
+                          child: _StartButton(onPressed: _resolveThen),
+                        )
                         .animate(delay: 500.ms)
                         .fadeIn()
                         .slideY(begin: 0.3, end: 0),
                     const SizedBox(height: Gap.sm),
                     TextButton(
-                      onPressed: _start,
+                      onPressed: _resolveThen,
                       child: const Text(
                         'تخطّ',
                         style: TextStyle(

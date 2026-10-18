@@ -38,20 +38,20 @@ jobs:
           --dart-define=SUPABASE_ANON_KEY=sb_publishable_f2ViyzVqy0bbM8JyonEUZQ_6Kpeydhz
 
       - name: Rename APK
-        run: mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/xpress-v1.0.1.apk
+        run: mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/xpress-v1.0.2.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: xpress-apk
-          path: build/app/outputs/flutter-apk/xpress-v1.0.1.apk
+          path: build/app/outputs/flutter-apk/xpress-v1.0.2.apk
           if-no-files-found: error
 
-      - name: Publish downloadable APK (tag جديد لكل إصدار)
+      - name: Publish downloadable APK (tag v1.0.2 — جديد)
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.1
-          name: XPRESS v1.0.1 (إصلاح فتح التطبيق)
-          body: أساس التطبيق يعمل — تسجيل دخول، تسوّق، كتالوج حقيقي.
-          files: build/app/outputs/flutter-apk/xpress-v1.0.1.apk
+          tag_name: v1.0.2
+          name: XPRESS v1.0.2 (جديد)
+          body: نسخة جديدة من تطبيق XPRESS مع لوحة أدمن حقيقية وموافقة التجار وتسجيل دخول Google/جوال.
+          files: build/app/outputs/flutter-apk/xpress-v1.0.2.apk
           make_latest: true

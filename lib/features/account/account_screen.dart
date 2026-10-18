@@ -318,6 +318,12 @@ class AccountScreen extends ConsumerWidget {
                     onTap: () => context.push('/become-seller'),
                     trailing: const PillBadge(text: 'جديد', fontSize: 10),
                   ),
+                  if (user != null && !user.isAdmin)
+                    _MenuItem(
+                      icon: Icons.verified_user_outlined,
+                      label: 'تفعيل حساب مشرف',
+                      onTap: () => _openClaimAdmin(context, ref),
+                    ),
                   _MenuItem(
                     icon: Icons.help_outline_rounded,
                     label: AppStrings.helpCenter,
@@ -368,6 +374,61 @@ class AccountScreen extends ConsumerWidget {
   }
 
   Widget _vdiv() => Container(width: 1, height: 40, color: AppColors.divider);
+}
+
+Future<void> _openClaimAdmin(BuildContext context, WidgetRef ref) async {
+  final controller = TextEditingController();
+  final code = await showDialog<String>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('تفعيل حساب مشرف'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'أدخل الكود السري لتفعيل لوحة التحكم. (يعمل مرة واحدة: أول مشرف فقط)',
+            style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: controller,
+            autofocus: true,
+            decoration: const InputDecoration(hintText: 'الكود السري'),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: const Text(AppStrings.cancel),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+          child: const Text('تفعيل'),
+        ),
+      ],
+    ),
+  );
+  if (code == null || code.isEmpty) return;
+  try {
+    final ok = await ref.read(authProvider.notifier).claimAdmin(code);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          ok
+              ? 'تم تفعيل حسابك كمشرف. افتح لوحة التحكم من الحساب.'
+              : 'كود غير صحيح.',
+        ),
+      ),
+    );
+  } catch (e) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('تعذّر التفعيل: $e')));
+  }
 }
 
 class _QuickStat extends StatelessWidget {

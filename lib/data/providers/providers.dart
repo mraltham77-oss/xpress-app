@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../mock/mock_data.dart';
+import '../remote/admin_repository.dart';
 import '../models/address.dart';
 import '../models/app_notification.dart';
 import '../models/app_user.dart';
@@ -35,7 +35,8 @@ class CategoriesNotifier extends Notifier<List<ProductCategory>> {
   @override
   List<ProductCategory> build() {
     _hydrate();
-    return List.of(MockData.categories);
+    // نبدأ من صفر: كل الأقسام تُدار من السيرفر (لوحة الأدمن).
+    return const [];
   }
 
   Future<void> _hydrate() async {
@@ -65,7 +66,8 @@ class CatalogNotifier extends Notifier<List<Product>> {
   @override
   List<Product> build() {
     _hydrate();
-    return List.of(MockData.products);
+    // نبدأ من صفر: كل المنتجات حقيقية من السيرفر.
+    return const [];
   }
 
   Future<void> _hydrate() async {
@@ -129,7 +131,8 @@ final productsByCategoryProvider = Provider.family<List<Product>, String>((
 });
 
 final vendorByIdProvider = Provider.family<Vendor?, String>((ref, id) {
-  for (final v in MockData.vendors) {
+  final stores = ref.watch(storesProvider).asData?.value ?? const <Vendor>[];
+  for (final v in stores) {
     if (v.id == id) return v;
   }
   return null;
@@ -178,8 +181,25 @@ final searchResultsProvider = Provider<List<Product>>((ref) {
 class AuthNotifier extends Notifier<AppUser?> {
   @override
   AppUser? build() {
-    if (SupabaseService.isReady) return _authRepo.currentUser;
-    return MockData.user;
+    if (!SupabaseService.isReady) {
+      // الوضع المحلي: لا بيانات تجريبية — يعمل كزائر.
+      return null;
+    }
+    // مزامنة تلقائية مع تغيّرات جلسة Supabase (Google OAuth / OTP / خروج).
+    try {
+      final sub = SupabaseService.client.auth.onAuthStateChange.listen((ev) {
+        final hasSession = ev.session != null;
+        if (hasSession) {
+          refreshProfile();
+        } else {
+          state = null;
+        }
+      });
+      ref.onDispose(sub.cancel);
+    } catch (_) {
+      // تجاهل: الجلسة تُدار محليًا.
+    }
+    return _authRepo.currentUser;
   }
 
   bool get serverMode => SupabaseService.isReady;
@@ -216,6 +236,39 @@ class AuthNotifier extends Notifier<AppUser?> {
     if (!SupabaseService.isReady) return;
     state = await _authRepo.currentUserFresh();
     _reloadUserData();
+  }
+
+  /// تسجيل الدخول بحساب Google.
+  Future<void> signInWithGoogle() async {
+    await _authRepo.signInWithGoogle();
+  }
+
+  /// إعادة تحميل الجلسة بعد رجوع المستخدم من متصفح Google.
+  Future<void> syncFromGoogle() async {
+    await refreshProfile();
+  }
+
+  Future<void> sendPhoneOtp(String phone) => _authRepo.sendPhoneOtp(phone);
+
+  Future<void> verifyPhoneOtp({
+    required String phone,
+    required String token,
+    String name = '',
+  }) async {
+    state = await _authRepo.verifyPhoneOtp(
+      phone: phone,
+      token: token,
+      name: name,
+    );
+    _reloadUserData();
+  }
+
+  /// تفعيل حساب الأدمن بالكود السري (أول أدمن فقط).
+  Future<bool> claimAdmin(String code) async {
+    if (!SupabaseService.isReady) return false;
+    final ok = await _authRepo.claimAdmin(code);
+    if (ok) await refreshProfile();
+    return ok;
   }
 
   /// الوضع المحلي (بدون سيرفر): دخول تجريبي.
@@ -267,7 +320,7 @@ class WishlistNotifier extends Notifier<Set<String>> {
         ? LocalStore.instance.getStringList(LocalStore.kWishlist)
         : null;
     if (saved != null) return saved.toSet();
-    return {'p3', 'p6'};
+    return <String>{};
   }
 
   void toggle(String id) {
@@ -300,10 +353,10 @@ class CartNotifier extends Notifier<List<CartItem>> {
     if (!LocalStore.isReady) return [];
     final rows = LocalStore.instance.getJsonList(LocalStore.kCart);
     if (rows == null) return [];
-    final byId = {for (final p in MockData.products) p.id: p};
+    final byId = {for (final p in ref.read(catalogProvider)) p.id: p};
     final restored = <CartItem>[];
     for (final row in rows) {
-      final product = byId[row['productId']];
+      final product = byId[row['productId']] ?? _snapshot(row['product']);
       if (product == null) continue; // منتج لم يعد متاحًا — نتجاهل السطر.
       restored.add(
         CartItem(
@@ -349,6 +402,7 @@ class CartNotifier extends Notifier<List<CartItem>> {
       for (final i in state)
         {
           'productId': i.product.id,
+          'product': i.product.toJson(),
           'quantity': i.quantity,
           'color': i.color,
           'size': i.size,
@@ -366,6 +420,11 @@ class CartNotifier extends Notifier<List<CartItem>> {
 
   bool _sameLine(CartItem a, Product p, String? color, String? size) =>
       a.product.id == p.id && a.color == color && a.size == size;
+
+  Product? _snapshot(Object? raw) {
+    if (raw is Map) return Product.fromJson(raw.cast<String, dynamic>());
+    return null;
+  }
 
   void add(Product p, {int qty = 1, String? color, String? size}) {
     final index = state.indexWhere((i) => _sameLine(i, p, color, size));
@@ -457,9 +516,9 @@ class AddressesNotifier extends Notifier<List<Address>> {
   @override
   List<Address> build() {
     _hydrate();
-    if (!LocalStore.isReady) return MockData.addresses();
+    if (!LocalStore.isReady) return const [];
     final rows = LocalStore.instance.getJsonList(LocalStore.kAddresses);
-    if (rows == null) return MockData.addresses();
+    if (rows == null) return const [];
     return rows.map(Address.fromJson).toList();
   }
 
@@ -535,14 +594,22 @@ final defaultAddressProvider = Provider<Address?>(
 );
 
 // ─────────────────────────── Payment methods ───────────────────────────
+// حاليًا: الدفع عند الاستلام فقط (حقيقي). الدفع الإلكتروني يحتاج بوابة دفع.
 final paymentMethodsProvider = Provider<List<PaymentMethod>>(
-  (ref) => MockData.paymentMethods,
+  (ref) => const [
+    PaymentMethod(
+      id: 'cod',
+      type: PaymentType.cod,
+      label: 'الدفع عند الاستلام',
+      isDefault: true,
+    ),
+  ],
 );
 
 // ─────────────────────────── Coupons ───────────────────────────
 class CouponsNotifier extends Notifier<List<Coupon>> {
   @override
-  List<Coupon> build() => MockData.coupons();
+  List<Coupon> build() => const [];
 
   Coupon? findByCode(String code) {
     final c = code.trim().toUpperCase();
@@ -565,11 +632,8 @@ final couponsProvider = NotifierProvider<CouponsNotifier, List<Coupon>>(
 class ReviewsNotifier extends Notifier<Map<String, List<Review>>> {
   @override
   Map<String, List<Review>> build() {
-    final grouped = <String, List<Review>>{};
-    for (final r in MockData.reviews()) {
-      grouped.putIfAbsent(r.productId, () => []).add(r);
-    }
-    return grouped;
+    // المراجعات تُبنى من السيرفر لاحقًا؛ نبدأ من صفر.
+    return const <String, List<Review>>{};
   }
 
   void add(Review review) {
@@ -595,7 +659,7 @@ final reviewsProvider =
 // ─────────────────────────── Notifications ───────────────────────────
 class NotificationsNotifier extends Notifier<List<AppNotification>> {
   @override
-  List<AppNotification> build() => MockData.notifications();
+  List<AppNotification> build() => const [];
 
   int get unread => state.where((n) => !n.read).length;
 
@@ -615,10 +679,9 @@ class OrdersNotifier extends Notifier<List<Order>> {
   @override
   List<Order> build() {
     _hydrate();
-    final demo = SupabaseService.isReady ? <Order>[] : MockData.orders();
-    if (!LocalStore.isReady) return demo;
+    if (!LocalStore.isReady) return const [];
     final rows = LocalStore.instance.getJsonList(LocalStore.kOrders);
-    if (rows == null) return demo;
+    if (rows == null) return const [];
     return rows.map(Order.fromJson).toList();
   }
 
@@ -788,11 +851,8 @@ class WalletState {
 
 class WalletNotifier extends Notifier<WalletState> {
   @override
-  WalletState build() => WalletState(
-    available: 320,
-    held: 1548,
-    transactions: MockData.walletTransactions(),
-  );
+  WalletState build() =>
+      const WalletState(available: 0, held: 0, transactions: []);
 
   void deposit(double amount) {
     state = WalletState(
@@ -851,13 +911,20 @@ class MyStoreNotifier extends AsyncNotifier<Vendor?> {
   Future<Vendor?> createStore({
     required String name,
     String category = '',
+    String description = '',
+    String phone = '',
   }) async {
     final uid = _remoteUserId(ref);
     if (uid == null) throw Exception('سجّل الدخول أولًا');
     state = const AsyncValue.loading();
     final result = await AsyncValue.guard(
-      () =>
-          _sellerRepo.createStore(userId: uid, name: name, category: category),
+      () => _sellerRepo.createStore(
+        userId: uid,
+        name: name,
+        category: category,
+        description: description,
+        phone: phone,
+      ),
     );
     state = result;
     await ref.read(authProvider.notifier).refreshProfile();
@@ -881,4 +948,82 @@ final incomingOrdersProvider = FutureProvider<List<Order>>((ref) async {
   final store = await ref.watch(myStoreProvider.future);
   if (store == null) return const [];
   return _sellerRepo.incomingOrders(store.id);
+});
+
+// ─────────────────────────── Storefronts (المتاجر المعتمدة) ───────────────────────────
+/// قائمة المتاجر المرئية للجميع (المعتمدة فقط تظهر للزوار حسب RLS).
+class StoresNotifier extends AsyncNotifier<List<Vendor>> {
+  @override
+  Future<List<Vendor>> build() async {
+    if (!SupabaseService.isReady) return const [];
+    try {
+      final rows = await _catalogRepo.fetchStores();
+      return rows;
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<void> refresh() async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      if (!SupabaseService.isReady) return const <Vendor>[];
+      return _catalogRepo.fetchStores();
+    });
+  }
+}
+
+final storesProvider = AsyncNotifierProvider<StoresNotifier, List<Vendor>>(
+  StoresNotifier.new,
+);
+
+/// المتاجر المعتمدة فقط (يُستخدم في واجهة العملاء).
+final approvedStoresProvider = Provider<List<Vendor>>((ref) {
+  final stores = ref.watch(storesProvider).asData?.value ?? const <Vendor>[];
+  return stores.where((s) => s.isApproved).toList();
+});
+
+// ─────────────────────────── Admin (لوحة الأدمن) ───────────────────────────
+final adminRepositoryProvider = Provider<AdminRepository>(
+  (ref) => const AdminRepository(),
+);
+
+/// هل المستخدم الحالي أدمن؟
+final isAdminProvider = Provider<bool>(
+  (ref) => ref.watch(authProvider)?.isAdmin ?? false,
+);
+
+/// طلبات المتاجر بانتظار موافقة الأدمن.
+final pendingStoresProvider = FutureProvider<List<Vendor>>((ref) async {
+  if (!SupabaseService.isReady) return const [];
+  if (!(ref.watch(authProvider)?.isAdmin ?? false)) return const [];
+  return ref.watch(adminRepositoryProvider).pendingStores();
+});
+
+/// كل المتاجر (للأدمن).
+final allStoresProvider = FutureProvider<List<Vendor>>((ref) async {
+  if (!SupabaseService.isReady) return const [];
+  if (!(ref.watch(authProvider)?.isAdmin ?? false)) return const [];
+  return ref.watch(adminRepositoryProvider).allStores();
+});
+
+/// كل المنتجات (للأدمن).
+final allProductsProvider = FutureProvider<List<Product>>((ref) async {
+  if (!SupabaseService.isReady) return const [];
+  if (!(ref.watch(authProvider)?.isAdmin ?? false)) return const [];
+  return ref.watch(adminRepositoryProvider).allProducts();
+});
+
+/// كل المستخدمين (للأدمن).
+final allUsersProvider = FutureProvider<List<AppUser>>((ref) async {
+  if (!SupabaseService.isReady) return const [];
+  if (!(ref.watch(authProvider)?.isAdmin ?? false)) return const [];
+  return ref.watch(adminRepositoryProvider).allUsers();
+});
+
+/// إحصاءات لوحة الأدمن.
+final adminStatsProvider = FutureProvider<Map<String, int>>((ref) async {
+  if (!SupabaseService.isReady) return const {};
+  if (!(ref.watch(authProvider)?.isAdmin ?? false)) return const {};
+  return ref.watch(adminRepositoryProvider).stats();
 });

@@ -83,11 +83,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   void _socialLogin(String provider) {
+    if (provider == 'Google') {
+      _google();
+      return;
+    }
     if (ref.read(authProvider.notifier).serverMode) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'تسجيل الدخول بـ $provider يتطلب إعداد مزوّد OAuth في Supabase',
+            'تسجيل الدخول بـ $provider قريبًا. استخدم البريد أو Google.',
           ),
         ),
       );
@@ -98,6 +102,121 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       context,
     ).showSnackBar(SnackBar(content: Text('تم الدخول بحساب $provider')));
     _close();
+  }
+
+  Future<void> _google() async {
+    final notifier = ref.read(authProvider.notifier);
+    if (!notifier.serverMode) {
+      notifier.login('+20 100 000 0000');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('تم الدخول بحساب Google')));
+      _close();
+      return;
+    }
+    try {
+      await notifier.signInWithGoogle();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('أكمل تسجيل الدخول من نافذة Google')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'تعذّر تسجيل Google. تأكد من تفعيل المزوّد في Supabase. ($e)',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _phoneOtp() async {
+    final phoneCtrl = TextEditingController(text: '+20');
+    final tokenCtrl = TextEditingController();
+    var sent = false;
+    var busy = false;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          left: Gap.xl,
+          right: Gap.xl,
+          top: Gap.xl,
+        ),
+        child: StatefulBuilder(
+          builder: (ctx, setSheet) => Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'الدخول برقم الجوال',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: Gap.md),
+              TextField(
+                controller: phoneCtrl,
+                keyboardType: TextInputType.phone,
+                enabled: !sent,
+                decoration: const InputDecoration(hintText: '+20 1X XXX XXXX'),
+              ),
+              if (sent) ...[
+                const SizedBox(height: Gap.md),
+                TextField(
+                  controller: tokenCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(hintText: 'رمز التحقق'),
+                ),
+              ],
+              const SizedBox(height: Gap.lg),
+              NeonButton(
+                label: sent ? 'تأكيد الرمز' : 'إرسال الرمز',
+                onPressed: busy
+                    ? null
+                    : () async {
+                        final notifier2 = ref.read(authProvider.notifier);
+                        if (!notifier2.serverMode) {
+                          Navigator.pop(ctx);
+                          _close();
+                          return;
+                        }
+                        setSheet(() => busy = true);
+                        try {
+                          if (!sent) {
+                            await notifier2.sendPhoneOtp(phoneCtrl.text.trim());
+                            setSheet(() {
+                              sent = true;
+                              busy = false;
+                            });
+                          } else {
+                            await notifier2.verifyPhoneOtp(
+                              phone: phoneCtrl.text.trim(),
+                              token: tokenCtrl.text.trim(),
+                            );
+                            if (ctx.mounted) Navigator.pop(ctx);
+                            if (mounted) _close();
+                          }
+                        } catch (e) {
+                          setSheet(() => busy = false);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('تعذّر: $e')),
+                            );
+                          }
+                        }
+                      },
+              ),
+              const SizedBox(height: Gap.lg),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   String _msg(Object e) {
@@ -306,7 +425,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: Gap.xl),
+              const SizedBox(height: Gap.lg),
+              Center(
+                child: TextButton.icon(
+                  onPressed: _phoneOtp,
+                  icon: const Icon(Icons.sms_outlined, size: 18),
+                  label: const Text('الدخول برقم الجوال (رمز OTP)'),
+                ),
+              ),
+              const SizedBox(height: Gap.sm),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [

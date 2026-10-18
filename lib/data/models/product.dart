@@ -54,6 +54,70 @@ class Product {
   /// أول صورة بأمان (لا يسبّب انهيارًا عند غياب الصور).
   String get imageUrl => images.isNotEmpty ? images.first : '';
 
+  /// لقطة كاملة تُخزَّن مع السلة حتى تُستعاد دون الحاجة لتحميل الكتالوج.
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'title': title,
+    'images': images,
+    'price': price,
+    'old_price': oldPrice,
+    'rating': rating,
+    'reviews_count': reviewsCount,
+    'sold_count': soldCount,
+    'stock': stock,
+    'free_shipping': freeShipping,
+    'category_id': categoryId,
+    'description': description,
+    'colors': colors,
+    'specifications': specifications,
+    'vendor': {
+      'id': vendor.id,
+      'name': vendor.name,
+      'avatar_url': vendor.avatarUrl,
+      'rating': vendor.rating,
+      'followers': vendor.followers,
+    },
+  };
+
+  factory Product.fromJson(Map<String, dynamic> r) {
+    final v = (r['vendor'] as Map?)?.cast<String, dynamic>();
+    return Product(
+      id: r['id'] as String? ?? '',
+      title: r['title'] as String? ?? '',
+      images:
+          (r['images'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+      price: (r['price'] as num?)?.toDouble() ?? 0,
+      oldPrice: (r['old_price'] as num?)?.toDouble(),
+      rating: (r['rating'] as num?)?.toDouble() ?? 0,
+      reviewsCount: (r['reviews_count'] as num?)?.toInt() ?? 0,
+      soldCount: (r['sold_count'] as num?)?.toInt() ?? 0,
+      stock: (r['stock'] as num?)?.toInt() ?? 0,
+      freeShipping: r['free_shipping'] as bool? ?? false,
+      vendor: v == null
+          ? const Vendor(
+              id: '',
+              name: 'XPRESS',
+              avatarUrl: '',
+              rating: 0,
+              followers: 0,
+            )
+          : Vendor(
+              id: v['id'] as String? ?? '',
+              name: v['name'] as String? ?? '',
+              avatarUrl: v['avatar_url'] as String? ?? '',
+              rating: (v['rating'] as num?)?.toDouble() ?? 0,
+              followers: (v['followers'] as num?)?.toInt() ?? 0,
+            ),
+      categoryId: r['category_id'] as String? ?? '',
+      description: r['description'] as String? ?? '',
+      colors:
+          (r['colors'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+      specifications:
+          (r['specifications'] as List?)?.map((e) => e.toString()).toList() ??
+          const [],
+    );
+  }
+
   int get discountPercent {
     if (oldPrice == null || oldPrice == 0) return 0;
     return (((oldPrice! - price) / oldPrice!) * 100).round();

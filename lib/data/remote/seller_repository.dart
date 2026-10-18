@@ -26,6 +26,8 @@ class SellerRepository {
     required String userId,
     required String name,
     String category = '',
+    String description = '',
+    String phone = '',
   }) async {
     final id = 's${DateTime.now().millisecondsSinceEpoch}';
     await _db.from('vendors').insert({
@@ -33,8 +35,11 @@ class SellerRepository {
       'name': name,
       'owner_id': userId,
       'category': category,
+      'description': description,
+      'phone': phone,
       'location': 'القاهرة',
       'verified': false,
+      'status': 'pending',
     });
     try {
       await _db.rpc('set_my_role_seller');
@@ -43,6 +48,20 @@ class SellerRepository {
     }
     final row = await _db.from('vendors').select().eq('id', id).single();
     return _store(row);
+  }
+
+  /// حالة الطلب: هل المتجر معتمد أم بانتظار موافقة الأدمن؟
+  Future<StoreStatus> storeStatus(String storeId) async {
+    final row = await _db
+        .from('vendors')
+        .select('status')
+        .eq('id', storeId)
+        .maybeSingle();
+    return switch (row?['status'] as String?) {
+      'pending' => StoreStatus.pending,
+      'rejected' => StoreStatus.rejected,
+      _ => StoreStatus.approved,
+    };
   }
 
   // ─────────────────────────── المنتجات ───────────────────────────
@@ -150,6 +169,16 @@ class SellerRepository {
     verified: r['verified'] as bool? ?? false,
     badge: r['badge'] as String?,
     location: r['location'] as String? ?? 'القاهرة',
+    ownerId: r['owner_id'] as String? ?? '',
+    category: r['category'] as String? ?? '',
+    description: r['description'] as String? ?? '',
+    phone: r['phone'] as String? ?? '',
+    status: switch (r['status'] as String?) {
+      'pending' => StoreStatus.pending,
+      'rejected' => StoreStatus.rejected,
+      _ => StoreStatus.approved,
+    },
+    rejectionReason: r['rejection_reason'] as String? ?? '',
   );
 
   Product _product(Map<String, dynamic> r) {

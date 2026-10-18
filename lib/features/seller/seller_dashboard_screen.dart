@@ -158,6 +158,45 @@ class _StoreBodyState extends ConsumerState<_StoreBody> {
             ],
           ),
         ),
+        if (!widget.store.isApproved)
+          Container(
+            width: double.infinity,
+            color: widget.store.isRejected
+                ? AppColors.dangerSoft
+                : AppColors.warningSoft,
+            padding: const EdgeInsets.symmetric(
+              horizontal: Gap.lg,
+              vertical: 10,
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  widget.store.isRejected
+                      ? Icons.cancel_outlined
+                      : Icons.hourglass_top_rounded,
+                  size: 16,
+                  color: widget.store.isRejected
+                      ? AppColors.danger
+                      : AppColors.warning,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    widget.store.isRejected
+                        ? 'تم رفض طلب متجرك${widget.store.rejectionReason.isEmpty ? '' : ' — ${widget.store.rejectionReason}'}'
+                        : 'متجرك بانتظار موافقة الإدارة قبل ظهور المنتجات للعملاء.',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: widget.store.isRejected
+                          ? AppColors.danger
+                          : AppColors.warning,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         SegmentedButton<int>(
           segments: const [
             ButtonSegment(value: 0, label: Text('منتجاتي')),
@@ -294,12 +333,7 @@ class _ProductRow extends StatelessWidget {
       child: Row(
         children: [
           if (product.images.isNotEmpty)
-            NetImage(
-              url: product.images.first,
-              width: 52,
-              height: 52,
-              radius: 12,
-            )
+            NetImage(url: product.imageUrl, width: 52, height: 52, radius: 12)
           else
             Container(
               width: 52,

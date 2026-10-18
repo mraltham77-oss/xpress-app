@@ -81,6 +81,54 @@ class AuthRepository {
 
   Future<void> signOut() => _auth.signOut();
 
+  /// تسجيل الدخول بحساب Google (يتطلب ضبط مزوّد Google في لوحة Supabase).
+  Future<bool> signInWithGoogle() async {
+    return _auth.signInWithOAuth(
+      OAuthProvider.google,
+      redirectTo: 'com.xpress.app://login-callback',
+    );
+  }
+
+  /// إرسال رمز تحقّق (OTP) إلى رقم الجوال. يتطلب مزوّد SMS في Supabase.
+  Future<void> sendPhoneOtp(String phone) async {
+    await _auth.signInWithOtp(phone: phone);
+  }
+
+  /// تأكيد رمز الجوال وإنشاء/تسجيل الدخول.
+  Future<AppUser> verifyPhoneOtp({
+    required String phone,
+    required String token,
+    String name = '',
+  }) async {
+    final res = await _auth.verifyOTP(
+      type: OtpType.sms,
+      phone: phone,
+      token: token,
+    );
+    final user = res.user;
+    if (user == null) throw const AuthException('رمز غير صحيح');
+    final profile = await _fetchProfile(user.id);
+    if (profile == null && name.isNotEmpty) {
+      await _upsertProfile(
+        id: user.id,
+        name: name,
+        phone: phone,
+        city: 'القاهرة',
+        role: 'customer',
+      );
+    }
+    return _map(user, profile ?? {'name': name, 'phone': phone});
+  }
+
+  /// يفعّل بعضوية الأدمن بكود سري (أول أدمن فقط) عبر Supabase RPC.
+  Future<bool> claimAdmin(String code) async {
+    final res = await SupabaseService.client.rpc(
+      'claim_admin',
+      params: {'p_code': code},
+    );
+    return res == true;
+  }
+
   Future<Map<String, dynamic>?> _fetchProfile(String id) async {
     try {
       final row = await SupabaseService.client
@@ -130,11 +178,15 @@ class AuthRepository {
       (r) => r.name == roleStr,
       orElse: () => UserRole.customer,
     );
+    final avatar =
+        (profile?['avatar_url'] ?? meta['avatar_url'] ?? meta['picture'])
+            ?.toString();
     return AppUser(
       id: u.id,
       name: name,
       phone: phone,
       email: email,
+      avatarUrl: (avatar == null || avatar.isEmpty) ? null : avatar,
       city: city,
       role: role,
     );

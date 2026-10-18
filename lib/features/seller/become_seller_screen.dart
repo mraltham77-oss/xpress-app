@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_tokens.dart';
+import '../../data/models/vendor.dart';
 import '../../data/providers/providers.dart';
 
 class BecomeSellerScreen extends ConsumerStatefulWidget {
@@ -54,7 +55,11 @@ class _BecomeSellerScreenState extends ConsumerState<BecomeSellerScreen> {
       try {
         await ref
             .read(myStoreProvider.notifier)
-            .createStore(name: _store.text.trim(), category: _category!);
+            .createStore(
+              name: _store.text.trim(),
+              category: _category!,
+              phone: _phone.text.trim(),
+            );
         if (!mounted) return;
         setState(() => _submitting = false);
         _showSuccess(real: true);
@@ -97,13 +102,13 @@ class _BecomeSellerScreenState extends ConsumerState<BecomeSellerScreen> {
             ),
             const SizedBox(height: Gap.lg),
             Text(
-              real ? 'تم فتح متجرك! 🎉' : 'تم استلام طلبك!',
+              real ? 'تم إرسال طلب فتح المتجر! ⏳' : 'تم استلام طلبك!',
               style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
             ),
             const SizedBox(height: Gap.sm),
             Text(
               real
-                  ? 'تقدر الآن تضيف منتجاتك وتستقبل الطلبات مباشرة.'
+                  ? 'طلبك الآن بانتظار موافقة الإدارة. ستظهر لوحة متجرك بعد الاعتماد.'
                   : 'سيتواصل فريقنا معك خلال 24 ساعة لاستكمال بيانات المتجر والتحقق (KYC).',
               textAlign: TextAlign.center,
               style: const TextStyle(
@@ -118,9 +123,9 @@ class _BecomeSellerScreenState extends ConsumerState<BecomeSellerScreen> {
               child: ElevatedButton(
                 onPressed: () {
                   Navigator.pop(ctx);
-                  context.go(real ? '/seller' : '/home');
+                  context.go('/home');
                 },
-                child: Text(real ? 'اذهب للوحة متجري' : 'حسنًا'),
+                child: Text(real ? 'حسنًا' : 'حسنًا'),
               ),
             ),
           ],
@@ -131,6 +136,7 @@ class _BecomeSellerScreenState extends ConsumerState<BecomeSellerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final store = ref.watch(myStoreProvider).asData?.value;
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -143,6 +149,7 @@ class _BecomeSellerScreenState extends ConsumerState<BecomeSellerScreen> {
       body: ListView(
         padding: const EdgeInsets.all(Gap.lg),
         children: [
+          if (store != null) _StoreStatusBanner(store: store),
           Container(
             padding: const EdgeInsets.all(Gap.xl),
             decoration: BoxDecoration(
@@ -242,7 +249,7 @@ class _BecomeSellerScreenState extends ConsumerState<BecomeSellerScreen> {
                       color: Colors.white,
                     ),
                   )
-                : const Text('إنشاء المتجر'),
+                : const Text('إرسال طلب فتح المتجر'),
           ),
         ],
       ),
@@ -256,4 +263,75 @@ class _BecomeSellerScreenState extends ConsumerState<BecomeSellerScreen> {
       style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
     ),
   );
+}
+
+class _StoreStatusBanner extends StatelessWidget {
+  final Vendor store;
+  const _StoreStatusBanner({required this.store});
+
+  @override
+  Widget build(BuildContext context) {
+    final (color, icon, title, body) = switch (store.status) {
+      StoreStatus.pending => (
+        AppColors.warning,
+        Icons.hourglass_top_rounded,
+        'طلبك بانتظار الموافقة',
+        'متجر "${store.name}" قيد المراجعة من الإدارة.',
+      ),
+      StoreStatus.rejected => (
+        AppColors.danger,
+        Icons.cancel_outlined,
+        'تم رفض طلب المتجر',
+        store.rejectionReason.isEmpty
+            ? 'تواصل مع الدعم لمعرفة السبب.'
+            : 'السبب: ${store.rejectionReason}',
+      ),
+      StoreStatus.approved => (
+        AppColors.success,
+        Icons.verified_rounded,
+        'متجرك معتمد',
+        'متجر "${store.name}" يعمل الآن. أدر منتجاتك من لوحة متجري.',
+      ),
+    };
+    return Container(
+      margin: const EdgeInsets.only(bottom: Gap.lg),
+      padding: const EdgeInsets.all(Gap.lg),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color, size: 22),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: color,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  body,
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    color: AppColors.textSecondary,
+                    height: 1.6,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

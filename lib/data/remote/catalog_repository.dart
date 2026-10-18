@@ -31,6 +31,14 @@ class CatalogRepository {
     }).toList();
   }
 
+  Future<List<Vendor>> fetchStores() async {
+    final rows = await SupabaseService.client
+        .from('vendors')
+        .select()
+        .order('created_at', ascending: false);
+    return rows.map<Vendor>((r) => _vendor((r as Map).cast())).toList();
+  }
+
   ProductCategory _category(Map<String, dynamic> r) => ProductCategory(
     id: r['id'] as String,
     name: r['name'] as String? ?? '',
@@ -81,5 +89,15 @@ class CatalogRepository {
     verified: r['verified'] as bool? ?? false,
     badge: r['badge'] as String?,
     location: r['location'] as String? ?? 'القاهرة',
+    ownerId: r['owner_id'] as String? ?? '',
+    category: r['category'] as String? ?? '',
+    description: r['description'] as String? ?? '',
+    phone: r['phone'] as String? ?? '',
+    status: switch (r['status'] as String?) {
+      'pending' => StoreStatus.pending,
+      'rejected' => StoreStatus.rejected,
+      _ => StoreStatus.approved,
+    },
+    rejectionReason: r['rejection_reason'] as String? ?? '',
   );
 }

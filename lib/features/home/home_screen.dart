@@ -707,7 +707,7 @@ class _FlashCard extends StatelessWidget {
                 SizedBox(
                   height: 156,
                   width: double.infinity,
-                  child: NetImage(url: product.images.first, fit: BoxFit.cover),
+                  child: NetImage(url: product.imageUrl, fit: BoxFit.cover),
                 ),
                 PositionedDirectional(
                   top: 8,

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_tokens.dart';
+
 import '../../features/addresses/addresses_screen.dart';
 import '../../features/auth/forgot_password_screen.dart';
 import '../../features/auth/login_screen.dart';
@@ -33,6 +36,36 @@ final GlobalKey<NavigatorState> _rootKey = GlobalKey<NavigatorState>();
 final GoRouter appRouter = GoRouter(
   navigatorKey: _rootKey,
   initialLocation: '/splash',
+  errorBuilder: (context, state) => Scaffold(
+    backgroundColor: AppColors.background,
+    appBar: AppBar(title: const Text('تعذّر فتح الصفحة')),
+    body: Center(
+      child: Padding(
+        padding: const EdgeInsets.all(Gap.xxl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.error_outline_rounded,
+              size: 56,
+              color: AppColors.danger,
+            ),
+            const SizedBox(height: Gap.lg),
+            SelectableText(
+              'المسار غير موجود:\n${state.uri}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: Gap.xl),
+            ElevatedButton(
+              onPressed: () => context.go('/home'),
+              child: const Text('العودة للرئيسية'),
+            ),
+          ],
+        ),
+      ),
+    ),
+  ),
   routes: [
     GoRoute(path: '/splash', builder: (context, state) => const SplashScreen()),
     GoRoute(

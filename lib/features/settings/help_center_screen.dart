@@ -95,41 +95,44 @@ class HelpCenterScreen extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               boxShadow: Shadows.card,
             ),
-            child: Column(
-              children: _faqs
-                  .map(
-                    (f) => Theme(
-                      data: Theme.of(
-                        context,
-                      ).copyWith(dividerColor: Colors.transparent),
-                      child: ExpansionTile(
-                        title: Text(
-                          f.$1,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13.5,
-                          ),
-                        ),
-                        childrenPadding: const EdgeInsets.fromLTRB(
-                          Gap.lg,
-                          0,
-                          Gap.lg,
-                          Gap.lg,
-                        ),
-                        children: [
-                          Text(
-                            f.$2,
+            child: Material(
+              color: Colors.transparent,
+              child: Column(
+                children: _faqs
+                    .map(
+                      (f) => Theme(
+                        data: Theme.of(
+                          context,
+                        ).copyWith(dividerColor: Colors.transparent),
+                        child: ExpansionTile(
+                          title: Text(
+                            f.$1,
                             style: const TextStyle(
-                              fontSize: 13,
-                              height: 1.9,
-                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13.5,
                             ),
                           ),
-                        ],
+                          childrenPadding: const EdgeInsets.fromLTRB(
+                            Gap.lg,
+                            0,
+                            Gap.lg,
+                            Gap.lg,
+                          ),
+                          children: [
+                            Text(
+                              f.$2,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                height: 1.9,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  )
-                  .toList(),
+                    )
+                    .toList(),
+              ),
             ),
           ),
           const SizedBox(height: Gap.lg),

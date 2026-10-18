@@ -25,19 +25,37 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _autoStart() async {
-    final prefs = await SharedPreferences.getInstance();
-    final seen = prefs.getBool('seen_onboarding') ?? false;
-    await Future<void>.delayed(const Duration(milliseconds: 2800));
+    final seen = await _seenOnboarding();
+    await Future<void>.delayed(const Duration(milliseconds: 1200));
     if (!mounted || _navigating) return;
-    context.go(seen ? '/home' : '/onboarding');
+    _go(seen ? '/home' : '/onboarding');
   }
 
   Future<void> _start() async {
     _navigating = true;
-    final prefs = await SharedPreferences.getInstance();
-    final seen = prefs.getBool('seen_onboarding') ?? false;
+    final seen = await _seenOnboarding();
     if (!mounted) return;
-    context.go(seen ? '/home' : '/onboarding');
+    _go(seen ? '/home' : '/onboarding');
+  }
+
+  Future<bool> _seenOnboarding() async {
+    try {
+      final prefs = await SharedPreferences.getInstance().timeout(
+        const Duration(seconds: 3),
+      );
+      return prefs.getBool('seen_onboarding') ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  void _go(String location) {
+    if (!mounted) return;
+    try {
+      context.go(location);
+    } catch (e) {
+      debugPrint('[XPRESS] navigation failed: $e');
+    }
   }
 
   @override

@@ -51,6 +51,9 @@ class Product {
     this.specifications = const [],
   });
 
+  /// أول صورة بأمان (لا يسبّب انهيارًا عند غياب الصور).
+  String get imageUrl => images.isNotEmpty ? images.first : '';
+
   int get discountPercent {
     if (oldPrice == null || oldPrice == 0) return 0;
     return (((oldPrice! - price) / oldPrice!) * 100).round();

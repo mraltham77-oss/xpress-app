@@ -89,55 +89,58 @@ class AboutScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         boxShadow: Shadows.card,
       ),
-      child: ListTile(
-        leading: Icon(icon, color: AppColors.primary),
-        title: Text(
-          label,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-        ),
-        trailing: const Icon(
-          Icons.chevron_left_rounded,
-          color: AppColors.textHint,
-        ),
-        onTap: () {
-          if (label == 'شارك التطبيق') {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('تم نسخ رابط التطبيق www.xpress.app'),
+      child: Material(
+        color: Colors.transparent,
+        child: ListTile(
+          leading: Icon(icon, color: AppColors.primary),
+          title: Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+          ),
+          trailing: const Icon(
+            Icons.chevron_left_rounded,
+            color: AppColors.textHint,
+          ),
+          onTap: () {
+            if (label == 'شارك التطبيق') {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('تم نسخ رابط التطبيق www.xpress.app'),
+                ),
+              );
+              return;
+            }
+            showDialog<void>(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                title: Text(
+                  label,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 17,
+                  ),
+                ),
+                content: Text(
+                  _dialogBody(label),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    height: 1.9,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('حسنًا'),
+                  ),
+                ],
               ),
             );
-            return;
-          }
-          showDialog<void>(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              title: Text(
-                label,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 17,
-                ),
-              ),
-              content: Text(
-                _dialogBody(label),
-                style: const TextStyle(
-                  fontSize: 14,
-                  height: 1.9,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('حسنًا'),
-                ),
-              ],
-            ),
-          );
-        },
+          },
+        ),
       ),
     );
   }

@@ -16,8 +16,10 @@ void main() {
       expect(container.read(cartProvider).length, 2);
       expect(notifier.itemCount, 3);
       expect(notifier.groups.length, 2);
-      expect(notifier.selectedSubtotal,
-          MockData.products[0].price * 2 + MockData.products[1].price);
+      expect(
+        notifier.selectedSubtotal,
+        MockData.products[0].price * 2 + MockData.products[1].price,
+      );
     });
 
     test('merges identical lines into one', () {

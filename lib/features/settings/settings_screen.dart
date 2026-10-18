@@ -149,7 +149,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             borderRadius: BorderRadius.circular(16),
             boxShadow: Shadows.card,
           ),
-          child: Column(children: children),
+          child: Material(
+            color: Colors.transparent,
+            child: Column(children: children),
+          ),
         ),
       ],
     );
@@ -159,32 +162,38 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     showModalBottomSheet(
       context: context,
       builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Padding(
-              padding: EdgeInsets.all(Gap.lg),
-              child: Text(
-                'اختر اللغة',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+        child: Material(
+          color: Colors.transparent,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(Gap.lg),
+                child: Text(
+                  'اختر اللغة',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                ),
               ),
-            ),
-            for (final lang in ['العربية', 'English'])
-              ListTile(
-                title: Text(lang),
-                trailing: _language == lang
-                    ? const Icon(Icons.check_rounded, color: AppColors.primary)
-                    : null,
-                onTap: () {
-                  setState(() => _language = lang);
-                  Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('تم اختيار اللغة: $lang')),
-                  );
-                },
-              ),
-            const SizedBox(height: Gap.sm),
-          ],
+              for (final lang in ['العربية', 'English'])
+                ListTile(
+                  title: Text(lang),
+                  trailing: _language == lang
+                      ? const Icon(
+                          Icons.check_rounded,
+                          color: AppColors.primary,
+                        )
+                      : null,
+                  onTap: () {
+                    setState(() => _language = lang);
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('تم اختيار اللغة: $lang')),
+                    );
+                  },
+                ),
+              const SizedBox(height: Gap.sm),
+            ],
+          ),
         ),
       ),
     );

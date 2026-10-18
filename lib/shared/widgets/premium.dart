@@ -93,15 +93,19 @@ class GradientText extends StatelessWidget {
     return ShaderMask(
       shaderCallback: (bounds) => gradient.createShader(
         Rect.fromLTWH(0, 0, bounds.width, bounds.height),
+        textDirection: TextDirection.ltr,
       ),
       blendMode: BlendMode.srcIn,
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: fontSize,
-          fontWeight: fontWeight,
-          letterSpacing: letterSpacing,
-          color: Colors.white,
+      child: Directionality(
+        textDirection: TextDirection.ltr,
+        child: Text(
+          text,
+          style: TextStyle(
+            fontSize: fontSize,
+            fontWeight: fontWeight,
+            letterSpacing: letterSpacing,
+            color: Colors.white,
+          ),
         ),
       ),
     );

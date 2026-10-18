@@ -42,9 +42,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   ];
 
   Future<void> _finish() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('seen_onboarding', true);
-    if (mounted) context.go('/home');
+    try {
+      final prefs = await SharedPreferences.getInstance().timeout(
+        const Duration(seconds: 3),
+      );
+      await prefs.setBool('seen_onboarding', true);
+    } catch (_) {}
+    if (mounted) {
+      try {
+        context.go('/home');
+      } catch (e) {
+        debugPrint('[XPRESS] navigation failed: $e');
+      }
+    }
   }
 
   @override

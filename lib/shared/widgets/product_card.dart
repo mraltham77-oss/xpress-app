@@ -35,10 +35,7 @@ class ProductCard extends ConsumerWidget {
                   aspectRatio: 1,
                   child: Hero(
                     tag: 'product-${product.id}',
-                    child: NetImage(
-                      url: product.images.first,
-                      fit: BoxFit.cover,
-                    ),
+                    child: NetImage(url: product.imageUrl, fit: BoxFit.cover),
                   ),
                 ),
                 if (product.discountPercent > 0)

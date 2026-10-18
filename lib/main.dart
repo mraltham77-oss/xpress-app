@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 import 'app.dart';
+import 'core/error_guard.dart';
 import 'data/remote/supabase_service.dart';
 import 'data/storage/local_store.dart';
 
 Future<void> main() async {
+  installErrorGuard();
   WidgetsFlutterBinding.ensureInitialized();
   // حماية كاملة: أي فشل أثناء الإقلاع لا يمنع واجهة التطبيق من الفتح.
   try {

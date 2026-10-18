@@ -100,7 +100,7 @@ class _WriteReviewScreenState extends ConsumerState<WriteReviewScreen> {
             Row(
               children: [
                 NetImage(
-                  url: product.images.first,
+                  url: product.imageUrl,
                   width: 56,
                   height: 56,
                   radius: 12,

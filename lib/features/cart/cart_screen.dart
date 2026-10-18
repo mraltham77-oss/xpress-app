@@ -167,7 +167,7 @@ class _CartTile extends ConsumerWidget {
           ),
           const SizedBox(width: 8),
           NetImage(
-            url: item.product.images.first,
+            url: item.product.imageUrl,
             width: 78,
             height: 78,
             radius: 10,

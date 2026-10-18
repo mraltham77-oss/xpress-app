@@ -82,143 +82,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _close();
   }
 
-  void _socialLogin(String provider) {
-    if (provider == 'Google') {
-      _google();
-      return;
-    }
-    if (ref.read(authProvider.notifier).serverMode) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'تسجيل الدخول بـ $provider قريبًا. استخدم البريد أو Google.',
-          ),
-        ),
-      );
-      return;
-    }
-    ref.read(authProvider.notifier).login('+20 100 000 0000');
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('تم الدخول بحساب $provider')));
-    _close();
-  }
-
-  Future<void> _google() async {
-    final notifier = ref.read(authProvider.notifier);
-    if (!notifier.serverMode) {
-      notifier.login('+20 100 000 0000');
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('تم الدخول بحساب Google')));
-      _close();
-      return;
-    }
-    try {
-      await notifier.signInWithGoogle();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('أكمل تسجيل الدخول من نافذة Google')),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'تعذّر تسجيل Google. تأكد من تفعيل المزوّد في Supabase. ($e)',
-          ),
-        ),
-      );
-    }
-  }
-
-  Future<void> _phoneOtp() async {
-    final phoneCtrl = TextEditingController(text: '+20');
-    final tokenCtrl = TextEditingController();
-    var sent = false;
-    var busy = false;
-
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.surface,
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(ctx).viewInsets.bottom,
-          left: Gap.xl,
-          right: Gap.xl,
-          top: Gap.xl,
-        ),
-        child: StatefulBuilder(
-          builder: (ctx, setSheet) => Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text(
-                'الدخول برقم الجوال',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
-              ),
-              const SizedBox(height: Gap.md),
-              TextField(
-                controller: phoneCtrl,
-                keyboardType: TextInputType.phone,
-                enabled: !sent,
-                decoration: const InputDecoration(hintText: '+20 1X XXX XXXX'),
-              ),
-              if (sent) ...[
-                const SizedBox(height: Gap.md),
-                TextField(
-                  controller: tokenCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(hintText: 'رمز التحقق'),
-                ),
-              ],
-              const SizedBox(height: Gap.lg),
-              NeonButton(
-                label: sent ? 'تأكيد الرمز' : 'إرسال الرمز',
-                onPressed: busy
-                    ? null
-                    : () async {
-                        final notifier2 = ref.read(authProvider.notifier);
-                        if (!notifier2.serverMode) {
-                          Navigator.pop(ctx);
-                          _close();
-                          return;
-                        }
-                        setSheet(() => busy = true);
-                        try {
-                          if (!sent) {
-                            await notifier2.sendPhoneOtp(phoneCtrl.text.trim());
-                            setSheet(() {
-                              sent = true;
-                              busy = false;
-                            });
-                          } else {
-                            await notifier2.verifyPhoneOtp(
-                              phone: phoneCtrl.text.trim(),
-                              token: tokenCtrl.text.trim(),
-                            );
-                            if (ctx.mounted) Navigator.pop(ctx);
-                            if (mounted) _close();
-                          }
-                        } catch (e) {
-                          setSheet(() => busy = false);
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('تعذّر: $e')),
-                            );
-                          }
-                        }
-                      },
-              ),
-              const SizedBox(height: Gap.lg),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   String _msg(Object e) {
     final s = e.toString();
     final i = s.indexOf('message:');
@@ -310,7 +173,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               const SizedBox(height: Gap.xl),
               _AuthField(
                 controller: _id,
-                hint: 'البريد الالكتروني أو رقم الهاتف',
+                hint: 'البريد الإلكتروني',
                 icon: Icons.alternate_email_rounded,
               ),
               const SizedBox(height: Gap.md),
@@ -375,65 +238,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                   ),
                 ),
-              const SizedBox(height: Gap.lg),
-              Row(
-                children: const [
-                  Expanded(child: Divider(color: AppColors.divider)),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
-                    child: Text(
-                      'أو تسجيل الدخول باستخدام',
-                      style: TextStyle(
-                        color: AppColors.textHint,
-                        fontSize: 12.5,
-                      ),
-                    ),
-                  ),
-                  Expanded(child: Divider(color: AppColors.divider)),
-                ],
-              ),
-              const SizedBox(height: Gap.lg),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _SocialCircle(
-                    onTap: () => _socialLogin('Google'),
-                    child: const _GoogleG(),
-                  ),
-                  const SizedBox(width: 18),
-                  _SocialCircle(
-                    onTap: () => _socialLogin('Apple'),
-                    child: const Icon(
-                      Icons.apple_rounded,
-                      color: Colors.black,
-                      size: 28,
-                    ),
-                  ),
-                  const SizedBox(width: 18),
-                  _SocialCircle(
-                    background: const Color(0xFF1877F2),
-                    onTap: () => _socialLogin('Facebook'),
-                    child: const Text(
-                      'f',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                        height: 1,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: Gap.lg),
-              Center(
-                child: TextButton.icon(
-                  onPressed: _phoneOtp,
-                  icon: const Icon(Icons.sms_outlined, size: 18),
-                  label: const Text('الدخول برقم الجوال (رمز OTP)'),
-                ),
-              ),
-              const SizedBox(height: Gap.sm),
+              const SizedBox(height: Gap.xl),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -560,60 +365,6 @@ class _RememberCheck extends StatelessWidget {
         child: value
             ? const Icon(Icons.check_rounded, size: 16, color: Colors.white)
             : null,
-      ),
-    );
-  }
-}
-
-/// دائرة شبكات اجتماعية بتصميم XPRESS (Google / Apple / Facebook).
-class _SocialCircle extends StatelessWidget {
-  final Widget child;
-  final VoidCallback onTap;
-  final Color background;
-
-  const _SocialCircle({
-    required this.child,
-    required this.onTap,
-    this.background = Colors.white,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 54,
-        height: 54,
-        decoration: BoxDecoration(
-          color: background,
-          shape: BoxShape.circle,
-          boxShadow: Shadows.floating,
-        ),
-        child: Center(child: child),
-      ),
-    );
-  }
-}
-
-/// حرف "G" لشعار Google بألوان العلامة.
-class _GoogleG extends StatelessWidget {
-  const _GoogleG();
-
-  @override
-  Widget build(BuildContext context) {
-    return const GradientText(
-      'G',
-      fontSize: 26,
-      fontWeight: FontWeight.w900,
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          Color(0xFF4285F4),
-          Color(0xFFEA4335),
-          Color(0xFFFBBC05),
-          Color(0xFF34A853),
-        ],
       ),
     );
   }

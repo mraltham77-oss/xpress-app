@@ -16,20 +16,25 @@ class SupabaseService {
 
   static Future<void> init() async {
     if (!SupabaseConfig.isConfigured) return;
-    if (SupabaseConfig.anonKey.startsWith('eyJ')) {
-      // مفتاح anon القديم (JWT).
-      await Supabase.initialize(
-        url: SupabaseConfig.url,
-        // ignore: deprecated_member_use
-        anonKey: SupabaseConfig.anonKey,
-      );
-    } else {
-      // مفتاح publishable الجديد (sb_publishable_...).
-      await Supabase.initialize(
-        url: SupabaseConfig.url,
-        publishableKey: SupabaseConfig.anonKey,
-      );
+    try {
+      if (SupabaseConfig.anonKey.startsWith('eyJ')) {
+        // مفتاح anon القديم (JWT).
+        await Supabase.initialize(
+          url: SupabaseConfig.url,
+          // ignore: deprecated_member_use
+          anonKey: SupabaseConfig.anonKey,
+        );
+      } else {
+        // مفتاح publishable الجديد (sb_publishable_...).
+        await Supabase.initialize(
+          url: SupabaseConfig.url,
+          publishableKey: SupabaseConfig.anonKey,
+        );
+      }
+      _ready = true;
+    } catch (_) {
+      // أي فشل (شبكة/إعدادات) لا يمنع فتح التطبيق: نكمل بالوضع المحلي.
+      _ready = false;
     }
-    _ready = true;
   }
 }

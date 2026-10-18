@@ -8,8 +8,15 @@ import 'data/storage/local_store.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await initializeDateFormatting('ar');
-  await LocalStore.init();
-  await SupabaseService.init();
+  // حماية كاملة: أي فشل أثناء الإقلاع لا يمنع واجهة التطبيق من الفتح.
+  try {
+    await initializeDateFormatting('ar');
+  } catch (_) {}
+  try {
+    await LocalStore.init();
+  } catch (_) {}
+  try {
+    await SupabaseService.init();
+  } catch (_) {}
   runApp(const ProviderScope(child: XpressApp()));
 }
